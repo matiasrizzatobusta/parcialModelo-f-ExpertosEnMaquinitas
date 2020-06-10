@@ -20,26 +20,57 @@ tieneObjeto :: String->[(String,Int)]->Bool
 tieneObjeto objeto listaFactores = (elem objeto.map fst) listaFactores && (all (>0).map snd) listaFactores
 
 incrementoSuerte :: Persona->Int
-incrementoSuerte persona = (suerte persona) * (tomoValorObjeto "amuleto" (factores persona))
+incrementoSuerte persona = (suerte persona) * (tomoValorObjeto "amuleto" persona)
 
-tomoValorObjeto :: String->[(String,Int)]->Int
-tomoValorObjeto objeto  = soloElValor.head.filter (tieneObjeto objeto)
-
-soloElValor ::(String,Int) ->Int
-soloElValor = snd
+tomoValorObjeto :: String->Persona->Int
+tomoValorObjeto objeto  = snd.head.filter (tieneObjeto objeto).factores
 
 ----------------------------- Punto 2 -----------------------------
 data Juego = UnJuego{
     nombreJuego :: String,
-    dineroGanado :: Float,
-    criterios :: [(Persona->Bool)]
+    dineroAGanar :: (Float->Float),
+    criterios :: [Persona->Bool]
 }deriving (Show)
 
 jackpot = undefined -- se deberia definir
 
-ruleta ::Float->Juego
-ruleta dineroApostado = UnJuego "ruleta" (dineroApostado* 37) [(>80).suerteTotal]
+ruleta ::Juego
+ruleta  = UnJuego "ruleta"  (*37) [(>80).suerteTotal]
 
-maquinita ::Float->Juego
-maquinita dineroApostado = UnJuego "maquinita" (jackpot + dineroApostado) [(>95).suerteTotal, tieneObjeto "paciencia".factores]
+maquinita ::Juego
+maquinita  = UnJuego "maquinita" (+jackpot) [(>95).suerteTotal, tieneObjeto "paciencia".factores]
 
+dineroQueGana :: (Float->Float)->Float->Float
+dineroQueGana funcion  = funcion 
+
+----------------------------- Punto 3 -----------------------------
+puedeGanar :: Persona->Juego->Bool
+puedeGanar persona = all (==True).map persona.criterios
+
+----------------------------- Punto 4 -----------------------------
+juega :: Float->Juego->Float
+juega apuesta juego = dineroQueGana (dineroAGanar juego) apuesta
+
+cuantoDineroConsigue :: Persona->Float->[Juego]->Float
+cuantoDineroConsigue persona apuesta = sum.map (juega apuesta).filter (puedeGanar persona)
+
+{-
+cuantoDineroConsigue :: Persona->Float->[Juego]->Float
+cuantoDineroConsigue _ _ [] = []
+cuantoDineroConsigue persona apuesta (x:xs) |puedeGanar persona x = sum(juega x apuesta :cuantoDineroConsigue persona apuesta xs)
+-}
+
+----------------------------- Punto 5 -----------------------------
+noGananNinguno :: [Persona]->[Juego]->[Persona]
+noGananNinguno listaJugador listaJuego = filter (n1 listaJuego) listaJugador--tomo un jg y se lo paso a la siguiente para q devuelva
+--bool.a los que no ganan los toma y los devuelve
+
+n1:: [Juego]->Persona->Bool
+n1 listaJuego persona = (all (==False).map (puedeGanar persona)) listaJuego
+----------------------------- Punto 6 -----------------------------
+apuesta :: Persona->Float->Juego->Persona
+apuesta persona apuesta juego |puedeGanar persona juego = persona{dinero = (dinero persona)+(juega apuesta juego)}
+                              |otherwise = persona{dinero = (dinero persona) - apuesta}
+
+----------------------------- Punto 7 -----------------------------
+-- elCocoEstaEnLaCasa :: (a,[Int])->(Int->Int)->(Int->Bool)->Bool
